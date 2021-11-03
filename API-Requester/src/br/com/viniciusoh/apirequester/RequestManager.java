@@ -1,5 +1,8 @@
 package br.com.viniciusoh.apirequester;
 
+import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
+
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 import java.io.*;
@@ -15,6 +18,7 @@ public class RequestManager {
 
     private String url;
     private int request_type;
+    OkHttpClient client = new OkHttpClient();
 
     public RequestManager(String url, int request_type) {
         this.url = url;
@@ -22,66 +26,39 @@ public class RequestManager {
     }
 
     public void makeRequest(Map<String,String> headers, Map<String,String> params, RequestCallback callback) {
-        String response = "";
-//        String response = "";
-//        for (int i = 0; i < headers.length; i++) {
-//            response += headers[i] + "\n";
-//        }
-//
-//        for (int i = 0; i < params.length; i++) {
-//            response += params[i] + "\n";
-//        }
-
-        URL url = null;
-        try {
-            url = new URL(this.url);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod(getRequestType());
-            con.setRequestProperty("User-Agent","Mozilla/5.0 ( compatible ) ");
-            con.setRequestProperty("Accept","*/*");
-
-            response += getRequestType() + " " + this.url;
-
-//            for (String k: headers.keySet()) {
-//                con.setRequestProperty(k, headers.get(k));
-//            }
-
-
-//            con.setDoOutput(true);
-//
-//
-//            DataOutputStream out = new DataOutputStream(con.getOutputStream());
-//            out.writeBytes(ParameterStringBuilder.getParamsString(params));
-//            out.flush();
-//            out.close();
-
-            int status = con.getResponseCode();
-            boolean success = false;
-            InputStream responseStream;
-            if (status == 200) {
-                success = true;
-                responseStream = con.getInputStream();
-            } else {
-                success = false;
-                responseStream = con.getErrorStream();
-                response += "\nResponse status code: " + status;
-            }
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(responseStream));
-            String inputLine;
-            StringBuffer content = new StringBuffer();
-            while ((inputLine = in.readLine()) != null) {
-                content.append(inputLine);
-            }
-            in.close();
-
-            con.disconnect();
-            response += "\n" + content.toString();
-            callback.callback(success, response);
-        } catch (Exception e) {
-            callback.callback(false, e.toString());
-            e.printStackTrace();
+        if (request_type == REQUEST_TYPE_GET) {
+            get(this.url, params, callback);
+        } else if (request_type == REQUEST_TYPE_POST) {
+            post(this.url, headers, params, callback);
         }
+    }
+
+    public void get(String url, Map<String,String>params, RequestCallback callback) {
+        HttpUrl.Builder httpBuilder = HttpUrl.parse(url).newBuilder();
+        if (params != null) {
+            for(Map.Entry<String, String> param : params.entrySet()) {
+                if (param.getValue() == null || param.getValue().length() == 0)     continue;
+                httpBuilder.addQueryParameter(param.getKey(),param.getValue());
+            }
+        }
+        Request request = new Request.Builder().url(httpBuilder.build()).build();
+        String msgLog = "GET " + request.url();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                callback.callback(false, msgLog + "\n" + e.toString());
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                callback.callback(response.isSuccessful(), msgLog + "\n" + response.body().string());
+            }
+        });
+    }
+
+    private void post(String url, Map<String, String> headers, Map<String, String> params, RequestCallback callback) {
+
     }
 
     private String getRequestType() {

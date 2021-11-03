@@ -18,7 +18,7 @@ public class Main {
         requestManager = new RequestManager(getUrl(), RequestManager.REQUEST_TYPE_GET);
         
 	    // write your code here
-        JFrame janela = new JFrame("Título da janela");
+        JFrame janela = new JFrame("API Requester - " + getUrl());
         janela.setBounds(300, 200, 1000, (getHeadersCount() + getParamsCount()) * 75); // Seta posição e tamanho
 
         janela.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -113,7 +113,6 @@ public class Main {
         requestManager.makeRequest(headers, params, (success, response) -> {
             txtOutput.setText(response);
         });
-         
     }
 
 
